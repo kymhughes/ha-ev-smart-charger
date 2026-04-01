@@ -51,7 +51,7 @@ LEGACY_CHARGING_PROFILES = [
 ]
 
 # ========== CHARGER AMPERAGE LEVELS ==========
-CHARGER_AMP_LEVELS = [6, 8, 10, 13, 16, 20, 24, 32]
+CHARGER_AMP_LEVELS = [5, 6, 7, 9, 11, 13, 15, 16]
 VOLTAGE_EU = 230  # European standard voltage (legacy, used as fallback)
 VOLTAGE_3PHASE_FACTOR = 3  # 3-phase power: P = 3 × V_phase × I
 
@@ -80,9 +80,9 @@ CONF_BATTERY_CAPACITY = "battery_capacity"
 CONF_ENERGY_FORECAST_TARGET = "energy_forecast_target"
 
 # Charger Electrical Defaults
-DEFAULT_MAX_CHARGING_CURRENT = 32  # amps
+DEFAULT_MAX_CHARGING_CURRENT = 16  # amps
 DEFAULT_NUM_PHASES = 1  # 1-phase or 3-phase
-DEFAULT_VOLTAGE = 230  # volts (single-phase nominal)
+DEFAULT_VOLTAGE = 240  # volts (single-phase nominal)
 VOLTAGE_OPTIONS = [220, 230, 240]  # Common regional voltages
 
 # Energy Forecast Defaults
@@ -176,14 +176,14 @@ DEFAULT_GRID_IMPORT_DELAY = 30  # seconds
 DEFAULT_SURPLUS_DROP_DELAY = 30  # seconds
 
 # ========== SURPLUS HYSTERESIS SETTINGS ==========
-SURPLUS_START_THRESHOLD = 6.5  # amps - minimum surplus to START charging (with margin)
-SURPLUS_STOP_THRESHOLD = 5.5   # amps - minimum surplus to CONTINUE charging
+SURPLUS_START_THRESHOLD = 5.5  # amps - minimum surplus to START charging (with margin)
+SURPLUS_STOP_THRESHOLD = 4.5   # amps - minimum surplus to CONTINUE charging
 SURPLUS_INCREASE_DELAY = 60  # seconds - delay before increasing amperage (cloud protection)
 SURPLUS_DEADBAND_START_DELAY = 120  # seconds - persistent dead band surplus before opportunistic start
 
 # ========== DEFAULT VALUES - HOME BATTERY SUPPORT ==========
 DEFAULT_HOME_BATTERY_MIN_SOC = 20  # percent
-DEFAULT_BATTERY_SUPPORT_AMPERAGE = 16  # amps (user configurable)
+DEFAULT_BATTERY_SUPPORT_AMPERAGE = 15  # amps (user configurable)
 
 # ========== DEFAULT VALUES - PRIORITY BALANCER ==========
 DEFAULT_EV_MIN_SOC_WEEKDAY = 50  # percent (Monday-Friday)
@@ -193,7 +193,7 @@ DEFAULT_HOME_MIN_SOC = 50  # percent (all days)
 # ========== DEFAULT VALUES - NIGHT SMART CHARGE ==========
 DEFAULT_NIGHT_CHARGE_TIME = "01:00:00"
 DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD = 20  # kWh
-DEFAULT_NIGHT_CHARGE_AMPERAGE = 16  # amps
+DEFAULT_NIGHT_CHARGE_AMPERAGE = 15  # amps
 DEFAULT_CAR_READY_TIME = "08:00:00"  # Default deadline when car must be ready
 NIGHT_CHARGE_COOLDOWN_SECONDS = 3600  # 1 hour - prevent re-evaluation after completion
 
@@ -202,7 +202,7 @@ NIGHT_CHARGE_START_MAX_RETRIES = 3  # Maximum attempts to start charger
 NIGHT_CHARGE_START_RETRY_DELAYS = [5, 15, 30]  # Seconds between retry attempts (backoff)
 
 # ========== DEFAULT VALUES - BOOST CHARGE ==========
-DEFAULT_BOOST_CHARGE_AMPERAGE = 16  # amps
+DEFAULT_BOOST_CHARGE_AMPERAGE = 15  # amps
 DEFAULT_BOOST_TARGET_SOC = 80  # percent
 
 # ========== NIGHT SMART CHARGE WINDOW ACTIVATION SETTINGS (v1.4.4) ==========
