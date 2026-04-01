@@ -4,16 +4,69 @@ This module provides reusable utilities for dynamic amperage management
 used by both Solar Surplus and Night Smart Charge components.
 """
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from homeassistant.util import dt as dt_util
 
 from ..const import (
     CHARGER_AMP_LEVELS,
     VOLTAGE_EU,
+    VOLTAGE_3PHASE_FACTOR,
+    DEFAULT_VOLTAGE,
     SURPLUS_START_THRESHOLD,
     SURPLUS_STOP_THRESHOLD,
 )
+
+
+def watts_to_amps(watts: float, num_phases: int = 1, voltage: int = DEFAULT_VOLTAGE) -> float:
+    """Convert watts to amps accounting for phase configuration.
+
+    Single-phase: P = V × I  →  I = P / V
+    Three-phase:  P = 3 × V_phase × I  →  I = P / (3 × V_phase)
+
+    Args:
+        watts: Power in watts
+        num_phases: 1 for single-phase, 3 for three-phase
+        voltage: Single-phase nominal voltage (e.g. 230, 240)
+
+    Returns:
+        Current in amps
+    """
+    effective_voltage = voltage * VOLTAGE_3PHASE_FACTOR if num_phases == 3 else voltage
+    return watts / effective_voltage
+
+
+def amps_to_watts(amps: float, num_phases: int = 1, voltage: int = DEFAULT_VOLTAGE) -> float:
+    """Convert amps to watts accounting for phase configuration.
+
+    Single-phase: P = V × I
+    Three-phase:  P = 3 × V_phase × I
+
+    Args:
+        amps: Current in amps
+        num_phases: 1 for single-phase, 3 for three-phase
+        voltage: Single-phase nominal voltage (e.g. 230, 240)
+
+    Returns:
+        Power in watts
+    """
+    effective_voltage = voltage * VOLTAGE_3PHASE_FACTOR if num_phases == 3 else voltage
+    return amps * effective_voltage
+
+
+def get_amp_levels_for_max(max_amps: int = 32) -> List[int]:
+    """Return CHARGER_AMP_LEVELS filtered to max_amps.
+
+    Args:
+        max_amps: Maximum allowed amperage for this charger
+
+    Returns:
+        List of valid amperage levels up to max_amps
+    """
+    levels = [level for level in CHARGER_AMP_LEVELS if level <= max_amps]
+    if not levels:
+        return [CHARGER_AMP_LEVELS[0]]
+    return levels
 
 
 class AmperageCalculator:
@@ -24,6 +77,9 @@ class AmperageCalculator:
         surplus_watts: float,
         current_amps: int = 0,
         battery_support_amps: Optional[int] = None,
+        num_phases: int = 1,
+        max_amps: int = 32,
+        voltage: int = DEFAULT_VOLTAGE,
     ) -> Tuple[int, str]:
         """Calculate target amperage from surplus with battery support fallback.
 
@@ -36,6 +92,9 @@ class AmperageCalculator:
             surplus_watts: Current surplus in watts (solar - home consumption)
             current_amps: Current charging amperage (0 if not charging)
             battery_support_amps: Amperage to use when battery support active
+            num_phases: Number of electrical phases (1 or 3)
+            max_amps: Maximum charging current for this charger
+            voltage: Single-phase nominal voltage (e.g. 230, 240)
 
         Returns:
             Tuple of (target_amps, reason) - Target amperage and calculation reason
@@ -47,14 +106,19 @@ class AmperageCalculator:
             >>> AmperageCalculator.calculate_from_surplus(500, 8, 16)
             (16, 'Battery fallback (2.2A)')
         """
-        surplus_amps = surplus_watts / VOLTAGE_EU
+        surplus_amps = watts_to_amps(surplus_watts, num_phases, voltage)
         is_charging = current_amps > 0
+        amp_levels = get_amp_levels_for_max(max_amps)
+
+        # Clamp battery support amps to max
+        if battery_support_amps and battery_support_amps > max_amps:
+            battery_support_amps = max_amps
 
         # CASE 1: Surplus sufficient to charge (>= 6.5A)
         if surplus_amps >= SURPLUS_START_THRESHOLD:
             # Find highest amp level that fits within surplus
-            target = CHARGER_AMP_LEVELS[0]  # Start with minimum (6A)
-            for level in CHARGER_AMP_LEVELS:
+            target = amp_levels[0]
+            for level in amp_levels:
                 if level <= surplus_amps:
                     target = level
                 else:
@@ -87,11 +151,12 @@ class AmperageCalculator:
         return 0, f"Insufficient surplus ({surplus_amps:.1f}A < {SURPLUS_STOP_THRESHOLD}A)"
 
     @staticmethod
-    def get_next_level_down(current_amps: int) -> int:
+    def get_next_level_down(current_amps: int, max_amps: int = 32) -> int:
         """Calculate one level down for reduction (grid import protection).
 
         Args:
             current_amps: Current charging amperage
+            max_amps: Maximum allowed amperage for this charger
 
         Returns:
             Next lower amperage level, or 0 if at minimum
@@ -102,12 +167,12 @@ class AmperageCalculator:
             >>> AmperageCalculator.get_next_level_down(6)
             0
         """
+        amp_levels = get_amp_levels_for_max(max_amps)
         try:
-            current_index = CHARGER_AMP_LEVELS.index(current_amps)
+            current_index = amp_levels.index(current_amps)
             if current_index > 0:
-                return CHARGER_AMP_LEVELS[current_index - 1]
+                return amp_levels[current_index - 1]
         except ValueError:
-            # Current amps not in standard levels, return 0
             pass
         return 0
 
@@ -128,13 +193,13 @@ class AmperageCalculator:
             >>> AmperageCalculator.get_next_level_up(13, 16)
             16
         """
+        amp_levels = get_amp_levels_for_max(max_amps)
         try:
-            current_index = CHARGER_AMP_LEVELS.index(current_amps)
-            if current_index < len(CHARGER_AMP_LEVELS) - 1:
-                next_amps = CHARGER_AMP_LEVELS[current_index + 1]
+            current_index = amp_levels.index(current_amps)
+            if current_index < len(amp_levels) - 1:
+                next_amps = amp_levels[current_index + 1]
                 return min(next_amps, max_amps)
         except ValueError:
-            # Current amps not in standard levels, return max
             pass
         return max_amps
 

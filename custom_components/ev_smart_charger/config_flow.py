@@ -18,15 +18,22 @@ from .const import (
     CONF_FV_PRODUCTION,
     CONF_GRID_IMPORT,
     CONF_HOME_CONSUMPTION,
+    CONF_MAX_CHARGING_CURRENT,
     CONF_NOTIFY_SERVICES,
+    CONF_NUM_PHASES,
     CONF_PV_FORECAST,
     CONF_SOC_CAR,
     CONF_SOC_HOME,
+    CONF_VOLTAGE,
     DEFAULT_BATTERY_CAPACITY,
+    DEFAULT_MAX_CHARGING_CURRENT,
     DEFAULT_NAME,
+    DEFAULT_NUM_PHASES,
+    DEFAULT_VOLTAGE,
     DOMAIN,
     MAX_BATTERY_CAPACITY,
     MIN_BATTERY_CAPACITY,
+    VOLTAGE_OPTIONS,
 )
 
 CURRENT_CONTROL_DOMAINS = ["number", "select", "input_number", "input_select"]
@@ -114,6 +121,40 @@ def _charger_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_EV_CHARGER_STATUS,
                 **_field_config(current_data.get(CONF_EV_CHARGER_STATUS)),
             ): _entity_selector("sensor"),
+            vol.Required(
+                CONF_MAX_CHARGING_CURRENT,
+                **_field_config(
+                    current_data.get(CONF_MAX_CHARGING_CURRENT, DEFAULT_MAX_CHARGING_CURRENT)
+                ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=6, max=32)),
+            vol.Required(
+                CONF_NUM_PHASES,
+                **_field_config(
+                    current_data.get(CONF_NUM_PHASES, DEFAULT_NUM_PHASES)
+                ),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(value="1", label="Single phase (1)"),
+                        selector.SelectOptionDict(value="3", label="Three phase (3)"),
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
+                CONF_VOLTAGE,
+                **_field_config(
+                    current_data.get(CONF_VOLTAGE, DEFAULT_VOLTAGE)
+                ),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(value=str(v), label=f"{v}V")
+                        for v in VOLTAGE_OPTIONS
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
         }
     )
 
@@ -225,6 +266,11 @@ class EVSCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            # Convert select strings to int for storage
+            if CONF_NUM_PHASES in user_input:
+                user_input[CONF_NUM_PHASES] = int(user_input[CONF_NUM_PHASES])
+            if CONF_VOLTAGE in user_input:
+                user_input[CONF_VOLTAGE] = int(user_input[CONF_VOLTAGE])
             await self.async_set_unique_id(user_input[CONF_EV_CHARGER_SWITCH])
             self._abort_if_unique_id_configured()
             self.charger_info = user_input
@@ -311,6 +357,10 @@ class EVSCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="unknown_entry")
 
         if user_input is not None:
+            if CONF_NUM_PHASES in user_input:
+                user_input[CONF_NUM_PHASES] = int(user_input[CONF_NUM_PHASES])
+            if CONF_VOLTAGE in user_input:
+                user_input[CONF_VOLTAGE] = int(user_input[CONF_VOLTAGE])
             if _is_duplicate_charger_switch(
                 self.hass,
                 user_input[CONF_EV_CHARGER_SWITCH],
@@ -423,6 +473,10 @@ class EVSCOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage charger entities options."""
         if user_input is not None:
+            if CONF_NUM_PHASES in user_input:
+                user_input[CONF_NUM_PHASES] = int(user_input[CONF_NUM_PHASES])
+            if CONF_VOLTAGE in user_input:
+                user_input[CONF_VOLTAGE] = int(user_input[CONF_VOLTAGE])
             if _is_duplicate_charger_switch(
                 self.hass,
                 user_input[CONF_EV_CHARGER_SWITCH],

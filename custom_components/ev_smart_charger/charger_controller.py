@@ -20,10 +20,16 @@ from .const import (
     CHARGER_STOP_SEQUENCE_DELAY,
     CONF_EV_CHARGER_CURRENT,
     CONF_EV_CHARGER_SWITCH,
+    CONF_MAX_CHARGING_CURRENT,
+    CONF_NUM_PHASES,
+    CONF_VOLTAGE,
+    DEFAULT_MAX_CHARGING_CURRENT,
+    DEFAULT_NUM_PHASES,
+    DEFAULT_VOLTAGE,
     SERVICE_CALL_TIMEOUT,
 )
 from .runtime import EVSCRuntimeData
-from .utils.amperage_helper import AmperageCalculator
+from .utils.amperage_helper import AmperageCalculator, get_amp_levels_for_max
 from .utils.logging_helper import EVSCLogger
 
 
@@ -151,6 +157,9 @@ class ChargerController:
         self._charger_switch = config.get(CONF_EV_CHARGER_SWITCH)
         self._charger_current = config.get(CONF_EV_CHARGER_CURRENT)
         self._current_control = CurrentControlAdapter(hass, self._charger_current)
+        self._max_charging_current = config.get(CONF_MAX_CHARGING_CURRENT, DEFAULT_MAX_CHARGING_CURRENT)
+        self._num_phases = config.get(CONF_NUM_PHASES, DEFAULT_NUM_PHASES)
+        self._voltage = config.get(CONF_VOLTAGE, DEFAULT_VOLTAGE)
 
         self._last_operation_time: Optional[datetime] = None
         self._current_amperage: Optional[int] = None
@@ -394,7 +403,7 @@ class ChargerController:
                 await self._refresh_state()
 
                 current_amps = self._current_amperage or 0
-                next_amps = AmperageCalculator.get_next_level_down(current_amps)
+                next_amps = AmperageCalculator.get_next_level_down(current_amps, self._max_charging_current)
                 await self._wait_for_rate_limit()
 
                 if next_amps == 0:
@@ -565,10 +574,11 @@ class ChargerController:
         self._last_operation_time = dt_util.now()
 
     def _normalize_target_amps(self, target_amps: int | float | None) -> int:
-        """Normalize a target amperage to the nearest supported level."""
+        """Normalize a target amperage to the nearest supported level, clamped to max."""
+        amp_levels = get_amp_levels_for_max(self._max_charging_current)
         if target_amps is None:
-            return CHARGER_AMP_LEVELS[0]
-        return min(CHARGER_AMP_LEVELS, key=lambda value: abs(value - int(target_amps)))
+            return amp_levels[0]
+        return min(amp_levels, key=lambda value: abs(value - int(target_amps)))
 
     async def _call_service(self, domain: str, service: str, data: dict):
         """Call a Home Assistant service with timeout and error handling."""

@@ -52,7 +52,8 @@ LEGACY_CHARGING_PROFILES = [
 
 # ========== CHARGER AMPERAGE LEVELS ==========
 CHARGER_AMP_LEVELS = [6, 8, 10, 13, 16, 20, 24, 32]
-VOLTAGE_EU = 230  # European standard voltage
+VOLTAGE_EU = 230  # European standard voltage (legacy, used as fallback)
+VOLTAGE_3PHASE_FACTOR = 3  # 3-phase power: P = 3 × V_phase × I
 
 # ========== CONFIGURATION FLOW KEYS ==========
 CONF_EV_CHARGER_SWITCH = "ev_charger_switch"
@@ -69,9 +70,20 @@ CONF_PV_FORECAST = "pv_forecast"
 CONF_NOTIFY_SERVICES = "notify_services"
 CONF_CAR_OWNER = "car_owner"  # Person entity for car owner (v1.3.19+)
 
+# Charger Electrical Configuration (v1.7.0+)
+CONF_MAX_CHARGING_CURRENT = "max_charging_current"
+CONF_NUM_PHASES = "num_phases"
+CONF_VOLTAGE = "voltage"
+
 # Energy Forecast Configuration (v1.4.8+)
 CONF_BATTERY_CAPACITY = "battery_capacity"
 CONF_ENERGY_FORECAST_TARGET = "energy_forecast_target"
+
+# Charger Electrical Defaults
+DEFAULT_MAX_CHARGING_CURRENT = 32  # amps
+DEFAULT_NUM_PHASES = 1  # 1-phase or 3-phase
+DEFAULT_VOLTAGE = 230  # volts (single-phase nominal)
+VOLTAGE_OPTIONS = [220, 230, 240]  # Common regional voltages
 
 # Energy Forecast Defaults
 DEFAULT_BATTERY_CAPACITY = 50.0  # kWh
